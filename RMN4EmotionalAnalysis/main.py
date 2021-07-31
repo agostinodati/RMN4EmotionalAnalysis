@@ -32,8 +32,10 @@ def ck_preprocessor(pathDataset = 'D:/CKdataset/cohn-kanade-images/', pathLabelD
     '''
     Create a new dataset starting from CK. In this new dataset will be stored only the sequences of images
     that have a emotion label. Sequences labelled with "contempt" will be ignored by the classifier.
+    :param pathDataset: Path of CK dataset with all subdirs
+    :param pathLabelDir: Path of emotion label's dir
+    :param newPath:  Path where new dataset will be created
     '''
-
     if os.path.isdir(newPath) is not True:
         os.mkdir(newPath)
 
@@ -42,6 +44,7 @@ def ck_preprocessor(pathDataset = 'D:/CKdataset/cohn-kanade-images/', pathLabelD
     missingLabel = 0
     totalElements = 0
     contemptCount = 0
+    countDict = {'angry': 0, 'contempt': 0, 'disgust': 0, 'fear': 0, 'happy': 0, 'sad': 0, 'surprise': 0}
 
     listDir = os.listdir(pathDataset)
     for dir in listDir:
@@ -72,6 +75,10 @@ def ck_preprocessor(pathDataset = 'D:/CKdataset/cohn-kanade-images/', pathLabelD
                             contemptCount = contemptCount + 1
                         labelName = ckEmotionDict[label]
                         print(label)
+
+                    # Count all the label for the log
+                    countDict[labelName] = countDict[labelName] + 1
+
                     # Create a new dir passing the label in the title and keeping the names of the original dir and subdir
                     newDir = labelName + '_' + dir + '_' + subdir
                     newDirPath = newPath + newDir + '/'
@@ -84,11 +91,17 @@ def ck_preprocessor(pathDataset = 'D:/CKdataset/cohn-kanade-images/', pathLabelD
                         # Copy the images in the dir into the path created above
                         copyfile(pathSubDir + frame, newDirPath + frame)
                         #print(pathSubDir + frame)
+    datasetLogHead = 'angry,contempt,disgust,fear,happy,sad,surprise,missing,total\n'
+    datasetLog = str(countDict['angry']) + ',' + str(countDict['contempt']) + ',' + str(countDict['disgust']) + ',' + str(countDict['fear']) + ',' + str(countDict['happy']) + ',' + str(countDict['sad']) + ',' + str(countDict['surprise']) + ',' + str(missingLabel) + ',' + str(totalElements)
+
+    csvLogDataset = newPath + 'logDataset.csv'
+    with open(csvLogDataset, 'w') as f:
+        f.write(datasetLogHead)
+        f.write(datasetLog)
 
     print('Total: ' + str(totalElements))
     print('Missing: ' + str(missingLabel))
     print('Contempt: ' + str(contemptCount))
-
 
 
 if __name__ == '__main__':
