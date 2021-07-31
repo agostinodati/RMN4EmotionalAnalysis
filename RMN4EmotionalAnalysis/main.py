@@ -1,5 +1,5 @@
 import cv2
-import numpy as np
+from shutil import copyfile
 from rmn import RMN
 import os
 from os import listdir
@@ -28,15 +28,21 @@ def main_test():
     print('Emotion voted is ' + emo_voted + ' with '+str(votes) + ' votes')
 
 
-def main():
+def ck_preprocessor(pathDataset = 'D:/CKdataset/cohn-kanade-images/', pathLabelDir = 'D:/CKdataset/Emotion_labels/Emotion/', newPath = 'C:/CKpreprocessed/'):
     '''
-    Per ogni sottocartella X di "cohn-kanade-images", devo aprire ogni sotto cartella Y e votare le immagini contenute.
-    Fatto ciò, verifico il risultato andando a prendere corrispendente dentro la sottocartella Y dentro "Emotion_labels".
-    Quindi conviene avere due liste con tutte le sottocartelle del dataset. Oppure modificare i nomi delle sotto-sottocartelle
-    effettuando un po' di preprocessing
+    Create a new dataset starting from CK. In this new dataset will be stored only the sequences of images
+    that have a emotion label. Sequences labelled with "contempt" will be ignored by the classifier.
     '''
-    pathDataset = 'D:/CKdataset/cohn-kanade-images/'
-    pathLabelDir = 'D:/CKdataset/Emotion_labels/Emotion/'
+
+    if os.path.isdir(newPath) is not True:
+        os.mkdir(newPath)
+
+    ckEmotionDict = {1: 'angry', 2: 'contempt', 3: 'disgust', 4: 'fear', 5: 'happy', 6: 'sad', 7: 'surprise'}
+
+    missingLabel = 0
+    totalElements = 0
+    contemptCount = 0
+
     listDir = os.listdir(pathDataset)
     for dir in listDir:
         pathDir = pathDataset + dir + '/'
@@ -44,18 +50,46 @@ def main():
             listSubDir = os.listdir(pathDir)
             for subdir in listSubDir:
                 pathSubDir = pathDir + subdir + '/'
+                pathLabel = pathLabelDir + dir + '/' + subdir + '/'
+                if os.path.isdir(pathLabel):
+                    print(os.listdir(pathLabel))
+                    listFileName = os.listdir(pathLabel)
+                    totalElements = totalElements + 1
+                    if listFileName.__len__() == 0:
+                        # Not all the expressions are labelled
+                        print('Skipped this becouse the label is missing')
+                        print(pathLabel)
+                        missingLabel = missingLabel + 1
+                        break
+                    labelFileName = listFileName[0]
+                    emotion_label_filepath = pathLabel + labelFileName
+                    print(emotion_label_filepath)
+                    with open(emotion_label_filepath, 'r') as f:
+                        label = f.readline()
+                        label = int(label.split('.')[0])
+                        if label == 2:
+                            print('Contempt found')
+                            contemptCount = contemptCount + 1
+                        labelName = ckEmotionDict[label]
+                        print(label)
+                    # Create a new dir passing the label in the title and keeping the names of the original dir and subdir
+                    newDir = labelName + '_' + dir + '_' + subdir
+                    newDirPath = newPath + newDir + '/'
+                    if os.path.isdir(newDirPath) is not True:
+                        os.mkdir(newDirPath)
+
                 if os.path.isdir(pathSubDir) and subdir != '.DS_Store':
                     listFrames = os.listdir(pathSubDir)
                     for frame in listFrames:
-                        print(pathSubDir + frame)
-                pathLabel = pathLabelDir + dir + '/' + subdir + '/'
-                if os.path.isdir(pathLabel):
-                    emotion_label_filepath = pathLabel + os.listdir(pathLabel)[0]
-                    print(emotion_label_filepath)
-                    with open(pathLabel, 'r') as f:
-                        label = f.readline()
+                        # Copy the images in the dir into the path created above
+                        copyfile(pathSubDir + frame, newDirPath + frame)
+                        #print(pathSubDir + frame)
+
+    print('Total: ' + str(totalElements))
+    print('Missing: ' + str(missingLabel))
+    print('Contempt: ' + str(contemptCount))
 
 
 
 if __name__ == '__main__':
-    main()
+    ck_preprocessor()
