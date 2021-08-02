@@ -4,31 +4,14 @@ from rmn import RMN
 import os
 from os import listdir
 from os.path import isfile, join
+import csv
+import sklearn.metrics as metrics
+from sklearn.metrics import confusion_matrix
+import time
 
 
-def main_test():
-    m = RMN()
-    mypath = 'examples/'
-    frames = [f for f in listdir(mypath) if isfile(join(mypath, f))]
-    count = 0
-    emo_dict = {'angry': 0, 'disgust': 0, 'fear': 0, 'happy': 0, 'sad': 0, 'surprise': 0, 'neutral': 0}
-    for frame in frames:
-        print(frame)
-        image = cv2.imread(mypath + frame)
-        results = m.detect_emotion_for_single_frame(image)
-        proba_list = results[0]['proba_list']
-        emo_label = results[0]['emo_label']
-        emo_dict[emo_label] = emo_dict[emo_label] + 1
-        print(results)
-        image = m.draw(image, results)
-        cv2.imwrite('examples/results/output_' + str(count) + '.png', image)
-        count += 1
-    emo_voted = max(emo_dict, key=emo_dict.get) # NB: se ci sono più elementi max, prende il primo che incontra. Loggare quando vi sono più max eventualmente
-    votes = emo_dict[emo_voted]
-    print('Emotion voted is ' + emo_voted + ' with '+str(votes) + ' votes')
-
-
-def ck_preprocessor(pathDataset = 'D:/CKdataset/cohn-kanade-images/', pathLabelDir = 'D:/CKdataset/Emotion_labels/Emotion/', newPath = 'C:/CKpreprocessed/'):
+def ck_preprocessor(pathDataset='D:/CKdataset/cohn-kanade-images/', pathLabelDir='D:/CKdataset/Emotion_labels/Emotion/',
+                    newPath='C:/CKpreprocessed/'):
     '''
     Create a new dataset starting from CK. In this new dataset will be stored only the sequences of images
     that have a emotion label. Sequences labelled with "contempt" will be ignored by the classifier.
@@ -43,7 +26,6 @@ def ck_preprocessor(pathDataset = 'D:/CKdataset/cohn-kanade-images/', pathLabelD
 
     missingLabel = 0
     totalElements = 0
-    contemptCount = 0
     countDict = {'angry': 0, 'contempt': 0, 'disgust': 0, 'fear': 0, 'happy': 0, 'sad': 0, 'surprise': 0}
 
     listDir = os.listdir(pathDataset)
@@ -70,9 +52,6 @@ def ck_preprocessor(pathDataset = 'D:/CKdataset/cohn-kanade-images/', pathLabelD
                     with open(emotion_label_filepath, 'r') as f:
                         label = f.readline()
                         label = int(label.split('.')[0])
-                        if label == 2:
-                            print('Contempt found')
-                            contemptCount = contemptCount + 1
                         labelName = ckEmotionDict[label]
                         print(label)
 
@@ -90,9 +69,11 @@ def ck_preprocessor(pathDataset = 'D:/CKdataset/cohn-kanade-images/', pathLabelD
                     for frame in listFrames:
                         # Copy the images in the dir into the path created above
                         copyfile(pathSubDir + frame, newDirPath + frame)
-                        #print(pathSubDir + frame)
+                        # print(pathSubDir + frame)
     datasetLogHead = 'angry,contempt,disgust,fear,happy,sad,surprise,missing,total\n'
-    datasetLog = str(countDict['angry']) + ',' + str(countDict['contempt']) + ',' + str(countDict['disgust']) + ',' + str(countDict['fear']) + ',' + str(countDict['happy']) + ',' + str(countDict['sad']) + ',' + str(countDict['surprise']) + ',' + str(missingLabel) + ',' + str(totalElements)
+    datasetLog = str(countDict['angry']) + ',' + str(countDict['contempt']) + ',' + str(
+        countDict['disgust']) + ',' + str(countDict['fear']) + ',' + str(countDict['happy']) + ',' + str(
+        countDict['sad']) + ',' + str(countDict['surprise']) + ',' + str(missingLabel) + ',' + str(totalElements)
 
     csvLogDataset = newPath + 'logDataset.csv'
     with open(csvLogDataset, 'w') as f:
@@ -101,8 +82,128 @@ def ck_preprocessor(pathDataset = 'D:/CKdataset/cohn-kanade-images/', pathLabelD
 
     print('Total: ' + str(totalElements))
     print('Missing: ' + str(missingLabel))
-    print('Contempt: ' + str(contemptCount))
+
+
+def ck_rmn_classify(dataset_path='C:/CKpreprocessed/', contempt_as_neutral=False):
+    dataset_log = dataset_path + 'logDataset.csv'
+    if contempt_as_neutral is True:
+        results_file_name = 'results_contempt_as_neutral.txt'
+    else:
+        results_file_name = 'results_contempt_ignored.txt'
+    labels = []
+    y_true = []
+    occurrences = []
+    y_pred = []
+    votes_emotions = {'angry': 0, 'neutral': 0, 'disgust': 0, 'fear': 0, 'happy': 0, 'sad': 0, 'surprise': 0}
+    count_emotions = {'angry': 0, 'neutral': 0, 'disgust': 0, 'fear': 0, 'happy': 0, 'sad': 0, 'surprise': 0}
+    classifier_rmn = RMN()
+
+    start_time = time.time()
+
+    with open(dataset_log) as csv_file:
+        # Extract labels from the log file
+        csv_log_dataset = csv.reader(csv_file, delimiter=',')
+        head = csv_log_dataset.__next__()
+        body = csv_log_dataset.__next__()
+        labels = head[:-2]
+        labels[1] = 'neutral'
+        occurrences = body[:-2]
+        occurrences = [int(i) for i in occurrences]  # Convert the values from string to int
+        print(labels)
+        print(occurrences)
+
+    dataset_path_seq = dataset_path + 'sequences/'
+    list_ck_dirs = os.listdir(dataset_path_seq)
+    print(list_ck_dirs)
+    print(str(list_ck_dirs.__len__()))
+
+    count = 0
+    for dir in list_ck_dirs:
+        if os.path.isdir(dataset_path_seq + dir) is False:
+            break
+        frame_sequence = os.listdir(dataset_path_seq + dir)
+        start = int(frame_sequence.__len__() / 2)
+        frame_sequence = frame_sequence[start:]
+        true_label = dir.split('_')[0]
+        if true_label == 'contempt':
+            if contempt_as_neutral is True:
+                y_true.append('neutral')
+            else:
+                break
+        else:
+            y_true.append(true_label)
+        print(y_true)
+        for frame_name in frame_sequence:
+            frame = cv2.imread(dataset_path_seq + dir + '/' + frame_name)
+            results = classifier_rmn.detect_emotion_for_single_frame(frame)
+            label_rmn = results[0]['emo_label']
+            votes_emotions[label_rmn] = votes_emotions[label_rmn] + 1
+        emotion_voted = max(votes_emotions,
+                            key=votes_emotions.get)  # NB: se ci sono più elementi max, prende il primo che incontra. Loggare quando vi sono più max eventualmente
+        y_pred.append(emotion_voted)
+        print(count)
+        count += 1
+        votes_emotions = {'angry': 0, 'neutral': 0, 'disgust': 0, 'fear': 0, 'happy': 0, 'sad': 0,
+                          'surprise': 0}  # Reset
+        count_emotions[emotion_voted] = count_emotions[emotion_voted] + 1
+
+        if count == 20:
+            break
+    print(str(count_emotions))
+
+    # y_pred = [count_emotions['angry'], count_emotions['neutral'], count_emotions['disgust'], count_emotions['fear'], count_emotions['happy'], count_emotions['sad'], count_emotions['surprise']]
+
+    confusionMatrix = confusion_matrix(y_true, y_pred, labels=labels)
+    print(confusionMatrix)
+
+    precision_micro = metrics.precision_score(y_true, y_pred, labels=labels, average='micro')
+    precision_macro = metrics.precision_score(y_true, y_pred, labels=labels, average='macro')
+
+    jaccard_micro = metrics.jaccard_score(y_true, y_pred, labels=labels,
+                                          average='micro')  # In binary and multiclass classification, this function is equivalent to the accuracy_score
+    jaccard_macro = metrics.jaccard_score(y_true, y_pred, labels=labels, average='macro')
+
+    recall_micro = metrics.recall_score(y_true, y_pred, labels=labels, average='micro')
+    recall_macro = metrics.recall_score(y_true, y_pred, labels=labels, average='macro')
+
+    f1_score_micro = metrics.f1_score(y_true, y_pred, labels=labels, average='micro')
+    f1_score_macro = metrics.f1_score(y_true, y_pred, labels=labels, average='macro')
+
+    balanced_accuracy = metrics.balanced_accuracy_score(y_true, y_pred)
+
+    metrics_dict = {'Precision Micro': precision_micro,
+                    'Precision Macro': precision_macro,
+                    'Jaccard Micro': jaccard_micro,
+                    'Jaccard Macro': jaccard_macro,
+                    'Recall Micro': recall_micro,
+                    'Recall Macro': recall_macro,
+                    'F1-Score Micro': f1_score_micro,
+                    'F1-Score Macro': f1_score_macro,
+                    'Balanced Accuracy': balanced_accuracy}
+
+    classification_report = metrics.classification_report(y_true, y_pred, labels=labels)
+    print(classification_report)
+
+    execution_time = time.time() - start_time
+
+    print('Execution time: ' + str(execution_time) + ' seconds.')
+    print(labels)
+
+    with open(dataset_path + results_file_name, 'w') as f:
+        f.write('Classification Report\n')
+        f.write(classification_report)
+        f.write('\n\n')
+
+        for name, value in metrics_dict.items():
+            print(f'{name:10} = {value:.2f}')
+            print('\n')
+            f.write(f'{name:10} = {value:.2f}')
+            f.write('\n')
+        f.write('\n\nExecution time: ' + str(int(execution_time)) + ' seconds')
+
+    print(count_emotions)
 
 
 if __name__ == '__main__':
-    ck_preprocessor()
+    # ck_preprocessor()
+    ck_rmn_classify()
