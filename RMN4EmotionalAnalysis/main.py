@@ -109,13 +109,9 @@ def ck_rmn_classify(dataset_path='C:/CKpreprocessed/', contempt_as_neutral=False
         labels[1] = 'neutral'
         occurrences = body[:-2]
         occurrences = [int(i) for i in occurrences]  # Convert the values from string to int
-        print(labels)
-        print(occurrences)
 
     dataset_path_seq = dataset_path + 'sequences/'
     list_ck_dirs = os.listdir(dataset_path_seq)
-    print(list_ck_dirs)
-    print(str(list_ck_dirs.__len__()))
 
     count = 0
     for dir in list_ck_dirs:
@@ -132,7 +128,7 @@ def ck_rmn_classify(dataset_path='C:/CKpreprocessed/', contempt_as_neutral=False
                 break
         else:
             y_true.append(true_label)
-        print(y_true)
+
         for frame_name in frame_sequence:
             frame = cv2.imread(dataset_path_seq + dir + '/' + frame_name)
             results = classifier_rmn.detect_emotion_for_single_frame(frame)
@@ -146,10 +142,10 @@ def ck_rmn_classify(dataset_path='C:/CKpreprocessed/', contempt_as_neutral=False
         votes_emotions = {'angry': 0, 'neutral': 0, 'disgust': 0, 'fear': 0, 'happy': 0, 'sad': 0,
                           'surprise': 0}  # Reset
         count_emotions[emotion_voted] = count_emotions[emotion_voted] + 1
-
+        '''
         if count == 20:
             break
-    print(str(count_emotions))
+        '''
 
     # y_pred = [count_emotions['angry'], count_emotions['neutral'], count_emotions['disgust'], count_emotions['fear'], count_emotions['happy'], count_emotions['sad'], count_emotions['surprise']]
 
@@ -187,7 +183,6 @@ def ck_rmn_classify(dataset_path='C:/CKpreprocessed/', contempt_as_neutral=False
     execution_time = time.time() - start_time
 
     print('Execution time: ' + str(execution_time) + ' seconds.')
-    print(labels)
 
     with open(dataset_path + results_file_name, 'w') as f:
         f.write('Classification Report\n')
