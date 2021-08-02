@@ -2,89 +2,96 @@ import cv2
 from shutil import copyfile
 from rmn import RMN
 import os
-from os import listdir
-from os.path import isfile, join
 import csv
 import sklearn.metrics as metrics
 from sklearn.metrics import confusion_matrix
 import time
 
 
-def ck_preprocessor(pathDataset='D:/CKdataset/cohn-kanade-images/', pathLabelDir='D:/CKdataset/Emotion_labels/Emotion/',
-                    newPath='C:/CKpreprocessed/'):
+def ck_preprocessor(path_dataset='D:/CKdataset/cohn-kanade-images/', path_label_dir='D:/CKdataset/Emotion_labels/Emotion/',
+                    new_path='C:/CKpreprocessed/'):
     '''
     Create a new dataset starting from CK. In this new dataset will be stored only the sequences of images
     that have a emotion label. Sequences labelled with "contempt" will be ignored by the classifier.
-    :param pathDataset: Path of CK dataset with all subdirs
-    :param pathLabelDir: Path of emotion label's dir
-    :param newPath:  Path where new dataset will be created
+    :param path_dataset: Path of CK dataset with all subdirs
+    :param path_label_dir: Path of emotion label's dir
+    :param new_path:  Path where new dataset will be created
     '''
-    if os.path.isdir(newPath) is not True:
-        os.mkdir(newPath)
+    if os.path.isdir(new_path) is not True:
+        os.mkdir(new_path)
+        log_path = new_path
+        new_path = new_path + 'sequences/'
+        os.mkdir(new_path)
 
-    ckEmotionDict = {1: 'angry', 2: 'contempt', 3: 'disgust', 4: 'fear', 5: 'happy', 6: 'sad', 7: 'surprise'}
+    ck_emotion_dict = {1: 'angry', 2: 'contempt', 3: 'disgust', 4: 'fear', 5: 'happy', 6: 'sad', 7: 'surprise'}
 
-    missingLabel = 0
-    totalElements = 0
-    countDict = {'angry': 0, 'contempt': 0, 'disgust': 0, 'fear': 0, 'happy': 0, 'sad': 0, 'surprise': 0}
+    missing_label = 0
+    total_elements = 0
+    count_dict = {'angry': 0, 'contempt': 0, 'disgust': 0, 'fear': 0, 'happy': 0, 'sad': 0, 'surprise': 0}
 
-    listDir = os.listdir(pathDataset)
-    for dir in listDir:
-        pathDir = pathDataset + dir + '/'
-        if os.path.isdir(pathDir):
-            listSubDir = os.listdir(pathDir)
-            for subdir in listSubDir:
-                pathSubDir = pathDir + subdir + '/'
-                pathLabel = pathLabelDir + dir + '/' + subdir + '/'
-                if os.path.isdir(pathLabel):
-                    print(os.listdir(pathLabel))
-                    listFileName = os.listdir(pathLabel)
-                    totalElements = totalElements + 1
-                    if listFileName.__len__() == 0:
+    list_dir = os.listdir(path_dataset)
+    for dir in list_dir:
+        path_dir = path_dataset + dir + '/'
+        if os.path.isdir(path_dir):
+            list_sub_dir = os.listdir(path_dir)
+            for subdir in list_sub_dir:
+                path_sub_dir = path_dir + subdir + '/'
+                path_label = path_label_dir + dir + '/' + subdir + '/'
+                if os.path.isdir(path_label):
+                    print(os.listdir(path_label))
+                    list_file_name = os.listdir(path_label)
+                    total_elements = total_elements + 1
+                    if list_file_name.__len__() == 0:
                         # Not all the expressions are labelled
-                        print('Skipped this becouse the label is missing')
-                        print(pathLabel)
-                        missingLabel = missingLabel + 1
+                        print('Skipped this because the label is missing')
+                        print(path_label)
+                        missing_label = missing_label + 1
                         break
-                    labelFileName = listFileName[0]
-                    emotion_label_filepath = pathLabel + labelFileName
+                    label_file_name = list_file_name[0]
+                    emotion_label_filepath = path_label + label_file_name
                     print(emotion_label_filepath)
                     with open(emotion_label_filepath, 'r') as f:
                         label = f.readline()
                         label = int(label.split('.')[0])
-                        labelName = ckEmotionDict[label]
+                        label_name = ck_emotion_dict[label]
                         print(label)
 
                     # Count all the label for the log
-                    countDict[labelName] = countDict[labelName] + 1
+                    count_dict[label_name] = count_dict[label_name] + 1
 
                     # Create a new dir passing the label in the title and keeping the names of the original dir and subdir
-                    newDir = labelName + '_' + dir + '_' + subdir
-                    newDirPath = newPath + newDir + '/'
-                    if os.path.isdir(newDirPath) is not True:
-                        os.mkdir(newDirPath)
+                    new_dir = label_name + '_' + dir + '_' + subdir
+                    new_dir_path = new_path + new_dir + '/'
+                    if os.path.isdir(new_dir_path) is not True:
+                        os.mkdir(new_dir_path)
 
-                if os.path.isdir(pathSubDir) and subdir != '.DS_Store':
-                    listFrames = os.listdir(pathSubDir)
-                    for frame in listFrames:
+                if os.path.isdir(path_sub_dir) and subdir != '.DS_Store':
+                    list_frames = os.listdir(path_sub_dir)
+                    for frame in list_frames:
                         # Copy the images in the dir into the path created above
-                        copyfile(pathSubDir + frame, newDirPath + frame)
-                        # print(pathSubDir + frame)
-    datasetLogHead = 'angry,contempt,disgust,fear,happy,sad,surprise,missing,total\n'
-    datasetLog = str(countDict['angry']) + ',' + str(countDict['contempt']) + ',' + str(
-        countDict['disgust']) + ',' + str(countDict['fear']) + ',' + str(countDict['happy']) + ',' + str(
-        countDict['sad']) + ',' + str(countDict['surprise']) + ',' + str(missingLabel) + ',' + str(totalElements)
+                        copyfile(path_sub_dir + frame, new_dir_path + frame)
+    dataset_log_head = 'angry,contempt,disgust,fear,happy,sad,surprise,missing,total\n'
+    dataset_log = str(count_dict['angry']) + ',' + str(count_dict['contempt']) + ',' + str(
+        count_dict['disgust']) + ',' + str(count_dict['fear']) + ',' + str(count_dict['happy']) + ',' + str(
+        count_dict['sad']) + ',' + str(count_dict['surprise']) + ',' + str(missing_label) + ',' + str(total_elements)
 
-    csvLogDataset = newPath + 'logDataset.csv'
-    with open(csvLogDataset, 'w') as f:
-        f.write(datasetLogHead)
-        f.write(datasetLog)
+    csv_log_dataset = log_path + 'logDataset.csv'
+    with open(csv_log_dataset, 'w') as f:
+        f.write(dataset_log_head)
+        f.write(dataset_log)
 
-    print('Total: ' + str(totalElements))
-    print('Missing: ' + str(missingLabel))
+    print('Total: ' + str(total_elements))
+    print('Missing: ' + str(missing_label))
 
 
 def ck_rmn_classify(dataset_path='C:/CKpreprocessed/', contempt_as_neutral=False):
+    '''
+    This function evaluate the RMN on the sequences extracted from the CK+.
+    :param dataset_path: Path where is located the dataset extracted from CK+.
+    :param contempt_as_neutral: Boolean. This flag allow to ignore the sequences labelled as 'contempt'
+    or to consider them as 'neutral'.
+    :return: Classification report
+    '''
     dataset_log = dataset_path + 'logDataset.csv'
     if contempt_as_neutral is True:
         results_file_name = 'results_contempt_as_neutral.txt'
@@ -116,7 +123,8 @@ def ck_rmn_classify(dataset_path='C:/CKpreprocessed/', contempt_as_neutral=False
     count = 0
     for dir in list_ck_dirs:
         if os.path.isdir(dataset_path_seq + dir) is False:
-            break
+            print(dataset_path_seq+dir)
+            continue
         frame_sequence = os.listdir(dataset_path_seq + dir)
         start = int(frame_sequence.__len__() / 2)
         frame_sequence = frame_sequence[start:]
@@ -125,7 +133,7 @@ def ck_rmn_classify(dataset_path='C:/CKpreprocessed/', contempt_as_neutral=False
             if contempt_as_neutral is True:
                 y_true.append('neutral')
             else:
-                break
+                continue
         else:
             y_true.append(true_label)
 
@@ -135,18 +143,18 @@ def ck_rmn_classify(dataset_path='C:/CKpreprocessed/', contempt_as_neutral=False
             label_rmn = results[0]['emo_label']
             votes_emotions[label_rmn] = votes_emotions[label_rmn] + 1
         emotion_voted = max(votes_emotions,
-                            key=votes_emotions.get)  # NB: se ci sono più elementi max, prende il primo che incontra. Loggare quando vi sono più max eventualmente
+                            key=votes_emotions.get)  # NB: if there are more then 1 max, take the firs encouredse ci sono più elementi max, prende il primo che incontra.
         y_pred.append(emotion_voted)
         print(count)
         count += 1
         votes_emotions = {'angry': 0, 'neutral': 0, 'disgust': 0, 'fear': 0, 'happy': 0, 'sad': 0,
                           'surprise': 0}  # Reset
         count_emotions[emotion_voted] = count_emotions[emotion_voted] + 1
-        '''
-        if count == 20:
-            break
-        '''
 
+        '''if count == 5:
+            break'''
+
+    print(count)
     # y_pred = [count_emotions['angry'], count_emotions['neutral'], count_emotions['disgust'], count_emotions['fear'], count_emotions['happy'], count_emotions['sad'], count_emotions['surprise']]
 
     confusionMatrix = confusion_matrix(y_true, y_pred, labels=labels)
@@ -198,7 +206,9 @@ def ck_rmn_classify(dataset_path='C:/CKpreprocessed/', contempt_as_neutral=False
 
     print(count_emotions)
 
+    return classification_report
+
 
 if __name__ == '__main__':
-    # ck_preprocessor()
+    ck_preprocessor()
     ck_rmn_classify()
