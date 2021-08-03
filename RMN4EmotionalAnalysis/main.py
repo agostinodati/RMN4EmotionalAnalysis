@@ -14,7 +14,7 @@ def ck_preprocessor(path_dataset='D:/CKdataset/cohn-kanade-images/', path_label_
     Create a new dataset starting from CK. In this new dataset will be stored only the sequences of images
     that have a emotion label. Sequences labelled with "contempt" will be ignored by the classifier.
     :param path_dataset: Path of CK dataset with all subdirs
-    :param path_label_dir: Path of emotion label's dir
+    :param path_label_dir: Path of emotion label's directory
     :param new_path:  Path where new dataset will be created
     '''
     if os.path.isdir(new_path) is not True:
@@ -143,7 +143,7 @@ def ck_rmn_classify(dataset_path='C:/CKpreprocessed/', contempt_as_neutral=False
             label_rmn = results[0]['emo_label']
             votes_emotions[label_rmn] = votes_emotions[label_rmn] + 1
         emotion_voted = max(votes_emotions,
-                            key=votes_emotions.get)  # NB: if there are more then 1 max, take the firs encouredse ci sono più elementi max, prende il primo che incontra.
+                            key=votes_emotions.get)  # NB: if there are more then 1 max, it takes the first encountered
         y_pred.append(emotion_voted)
         print(count)
         count += 1
