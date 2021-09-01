@@ -485,16 +485,18 @@ def video_rmn_classify(dataset_path='C:/dataset_video/'):
     return classification_report
 
 
-def mead_rmn_classify(dataset_path='D:Download/video/'):
+def mead_rmn_classify(dataset_path='C:/video/'):
     '''
     :param dataset_path:
     :return: Classification report
     '''
-    results_file_name = 'D:Download/report/results.txt'
-    video_log = 'D:Download/report/video_log.txt'
-    pred_filelist = 'D:Download/report/prevision_list'
+    results_file_name = './report/results.txt'
+    video_log = './report/video_log.txt'
+    pred_filelist = './report/prevision_list'
     labels = ['angry', 'neutral', 'disgust', 'fear', 'happy', 'sad', 'surprise']
     y_true = []
+    y_true_partial = []
+    y_pred_partial = []
     y_pred = []
     votes_emotions = {'angry': 0, 'neutral': 0, 'disgust': 0, 'fear': 0, 'happy': 0, 'sad': 0, 'surprise': 0}
     classifier_rmn = RMN()
@@ -546,11 +548,15 @@ def mead_rmn_classify(dataset_path='D:Download/video/'):
                                             key=votes_emotions.get)  # NB: if there are more then 1 max, it takes the first encountered
                         if dir.lower() == 'disgusted':
                             y_true.append('disgust')
+                            y_true_partial.append('disgust')
                         elif dir.lower() == 'surprised':
                             y_true.append('surprise')
+                            y_true_partial.append('surprise')
                         else:
                             y_true.append(dir.lower())
+                            y_true_partial.append(dir.lower())
                         y_pred.append(emotion_voted)
+                        y_pred_partial.append(emotion_voted)
                         print(count)
                         print(y_true)
                         print(y_pred)
@@ -561,14 +567,24 @@ def mead_rmn_classify(dataset_path='D:Download/video/'):
                         count += 1
                         count_video += 1
             classification_report_direction = metrics.classification_report(y_true, y_pred, labels=labels)
+            classification_report_direction_partial = metrics.classification_report(y_true_partial, y_pred_partial, labels=labels)
             print(classification_report_direction)
-            with open('D:Download/report/report_' + direction + '.txt', 'w') as fp:
+            with open('./report/report_' + direction + '.txt', 'w') as fp:
                 fp.write('Classification Report\n')
                 fp.write(classification_report_direction)
                 fp.write('\n\n')
-            with open('D:Download/report/true_pred_list_' + direction + '.txt', 'w') as p:
-                p.write(str(y_true) + ',')
+            with open('./report/true_pred_list_' + direction + '.txt', 'w') as p:
+                p.write(str(y_true) + ';')
                 p.write(str(y_pred))
+            with open('./report/partial_report_' + direction + '.txt', 'w') as fp:
+                fp.write('Classification Report\n')
+                fp.write(classification_report_direction_partial)
+                fp.write('\n\n')
+            with open('./report/partial_true_pred_list_' + direction + '.txt', 'w') as p:
+                p.write(str(y_true_partial) + ';')
+                p.write(str(y_pred_partial))
+            y_true_partial = []
+            y_pred_partial = []
 
 
     print(count)
@@ -622,8 +638,6 @@ def mead_rmn_classify(dataset_path='D:Download/video/'):
         with open(pred_filelist, 'w') as pred:
             pred.write(str(y_true) + ',')
             pred.write(str(y_pred))
-
-
     return classification_report
 
 
